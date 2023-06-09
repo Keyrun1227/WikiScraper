@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wikipedia Scraper</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .form-group textarea {
+            height: 150px;
+        }
+
+        .progress {
+            height: 30px;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            background-color: #4CAF50;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-4 mb-4 text-center">Wikipedia Scraper</h1>
+        <form id="scrape-form">
+            <div class="form-group">
+                <label for="urls">Enter Wikipedia URLs (one per line):</label>
+                <textarea id="urls" class="form-control" rows="5"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Scrape</button>
+            <div class="progress mt-3">
+                <div id="progress-bar-fill" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var progressBar = $('#progress-bar-fill');
+            var totalProgress = 0;
+            var currentPage = 0;
+
+            $('#scrape-form').submit(function (event) {
+                event.preventDefault();
+                var urls = $('#urls').val().trim().split('\n');
+
+                // Validate the number of URLs
+                if (urls.length < 5) {
+                    alert('Please enter a minimum of 5 URLs.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/scrape',
+                    type: 'POST',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ 'urls': urls }),
+                    success: function (response) {
+                        // Update progress bar on success
+                        setInterval(function () {
+                            $.ajax({
+                                url: '/progress',
+                                type: 'GET',
+                                success: function (progressResponse) {
+                                    var progress = progressResponse.progress;
+                                    totalProgress = Math.round(progress);
+                                    progressBar.css('width', totalProgress + '%');
+                                    if (totalProgress >= 100) {
+                                        // Redirect to filter page when scraping is complete
+                                        window.location.href = '/filter';
+                                    }
+                                }
+                            });
+                        }, 500);
+                    },
+                    error: function (xhr, status, error) {
+                        alert(xhr.responseJSON.message);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

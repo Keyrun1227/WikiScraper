@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Filter Pages</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        .content {
+            display: -webkit-box;
+            -webkit-line-clamp: 5;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Filter Pages</h1>
+        <form id="filter-form">
+            <div class="form-group">
+                <label for="field">Field:</label>
+                <select id="field" name="field" class="form-control">
+                    <option value="">Select a field</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="value">Value:</label>
+                <select id="value" name="value" class="form-control">
+                    <option value="">Select a value</option>
+                </select>
+            </div>
+            <button id="filter-button" type="submit" class="btn btn-primary">Filter</button>
+        </form>
+        <div id="pages-table">
+            <!-- The filtered pages table will be inserted here -->
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Populate the fields dropdown
+            $.ajax({
+                url: "/fields",
+                type: "GET",
+                success: function (response) {
+                    var fields = response.fields;
+                    var fieldSelect = $("#field");
+
+                    fields.forEach(function (field) {
+                        var option = $("<option></option>").text(field);
+                        fieldSelect.append(option);
+                    });
+                },
+                error: function (error) {
+                    console.log(error);
+                }
+            });
+
+            // Populate the values dropdown based on the selected field
+            $("#field").change(function () {
+                var selectedField = $(this).val();
+                var valueSelect = $("#value");
+                valueSelect.empty();
+
+                if (selectedField) {
+                    $.ajax({
+                        url: "/values",
+                        type: "GET",
+                        data: { field: selectedField },
+                        success: function (response) {
+                            var values = response.values;
+                            var uniqueValues = [...new Set(values)];
+                            uniqueValues.forEach(function (value) {
+                                var option = $("<option></option>").text(value);
+                                valueSelect.append(option);
+                            });
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    });
+                }
+            });
+
+            // Retrieve pages on page load
+            $.ajax({
+                url: "/pages",
+                type: "GET",
+                success: function (response) {
+                    var pages = JSON.parse(response);
+                    displayPages(pages);
+                },
+                error: function (error) {
+                    console.log(error);
+                }
+            });
+
+            $("#filter-form").submit(function (event) {
+                event.preventDefault();
+                var field = $("#field").val();
+                var value = $("#value").val();
+
+                if (!field || !value) {
+                    alert("Please select a field and a value.");
+                    return;
+                }
+
+                $.ajax({
+                    url: "/filter",
+                    type: "POST",
+                    dataType: "json",
+                    contentType: "application/json",
+                    data: JSON.stringify({ field: field, value: value }),
+                    success: function (response) {
+                        var pages = response;
+                        displayPages(pages);
+                    },
+                    error: function (error) {
+                        console.log(error);
+                    }
+                });
+            });
+
+            // Function to display the pages in the frontend
+            function displayPages(pages) {
+                var table = "<table class='table table-striped'>";
+
+                // Create table headers
+                table += "<thead><tr>";
+                table += "<th>Title</th>";
+                table += "<th>URL</th>";
+                table += "<th>Content</th>";
+                table += "</tr></thead><tbody>";
+
+                // Check if pages array is empty
+                if (pages.length === 0) {
+                    table += "<tr>";
+                    table += "<td colspan='3'>No URLs available for the selected combination.</td>";
+                    table += "</tr>";
+                } else {
+                    // Create table rows for each page
+                    pages.forEach(function (page) {
+                        var content = page.content.length > 0 ? (page.content.length > 500 ? page.content.substring(0, 500) + ".......visit link to see more content" : page.content) : "No content";
+                        table += "<tr>";
+                        table += "<td>" + page.title + "</td>";
+                        table += "<td><a href='" + page.url + "'>" + page.url + "</a></td>";
+                        table += "<td><div class='content'>" + content + "</div></td>";
+                        table += "</tr>";
+                    });
+                }
+
+                table += "</tbody></table>";
+
+                // Insert the table into the page
+                $("#pages-table").html(table);
+            }
+        });
+    </script>
+</body>
+</html>
